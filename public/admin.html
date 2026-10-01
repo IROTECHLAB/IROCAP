@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0f172a" />
+<title>irocap admin</title>
+<style>
+  :root { color-scheme: light; --bg: #f8fafc; --fg: #0f172a; --muted: #64748b; --line: #e2e8f0; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--fg);
+    background: var(--bg);
+    padding: 1rem max(1rem, env(safe-area-inset-right)) calc(1rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; }
+
+  h1 { font-size: 1.25rem; margin: 0 0 1rem; }
+  h2 { font-size: 1rem; margin: 1.5rem 0 0.5rem; color: #334155; }
+
+  button {
+    padding: 0.55rem 0.9rem;
+    min-height: 40px;
+    border: 0;
+    border-radius: 8px;
+    background: #0f172a;
+    color: #fff;
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s, background 0.15s;
+  }
+  button:active { opacity: 0.85; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button.secondary { background: #e2e8f0; color: #0f172a; }
+  button.danger { background: #dc2626; color: #fff; }
+  button.warn { background: #d97706; color: #fff; }
+  button.ghost {
+    background: transparent;
+    color: #0f172a;
+    border: 1px solid var(--line);
+    padding: 0.35rem 0.6rem;
+    min-height: 32px;
+    font-size: 0.8rem;
+  }
+  button.tiny {
+    padding: 0.3rem 0.55rem;
+    min-height: 30px;
+    font-size: 0.78rem;
+  }
+
+  input {
+    width: 100%;
+    padding: 0.6rem 0.7rem;
+    min-height: 40px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font: inherit;
+    background: #fff;
+    color: var(--fg);
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  input:focus { outline: 2px solid #0f172a; outline-offset: -1px; border-color: #0f172a; }
+
+  label.field {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-size: 0.78rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-weight: 600;
+  }
+
+  .stack { display: grid; gap: 0.75rem; }
+  .row3 { display: grid; gap: 0.75rem; grid-template-columns: 1fr; align-items: end; }
+  @media (min-width: 600px) { .row3 { grid-template-columns: 1fr auto auto; } }
+
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1rem;
+  }
+  .hidden { display: none !important; }
+  .muted { color: var(--muted); font-size: 0.82rem; }
+  .err { color: #dc2626; font-size: 0.85rem; min-height: 1.2em; }
+
+  .topbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+  }
+  .topbar .who { font-size: 0.82rem; color: var(--muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .topbar .who b { color: var(--fg); }
+
+  .stats { display: grid; gap: 0.6rem; grid-template-columns: repeat(2, 1fr); }
+  @media (min-width: 600px) { .stats { grid-template-columns: repeat(4, 1fr); } }
+  .stat {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 0.75rem 0.85rem;
+  }
+  .stat .n { font-size: 1.4rem; font-weight: 700; line-height: 1.1; }
+  .stat .l { color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 0.15rem; }
+
+  .key-row { margin: 0.55rem 0; }
+  .key-label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+  }
+  .key-value {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #f1f5f9;
+    padding: 0.4rem 0.5rem;
+    border-radius: 8px;
+    font: 0.78rem/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    min-width: 0;
+  }
+  .key-value code {
+    flex: 1;
+    min-width: 0;
+    word-break: break-all;
+    user-select: all;
+    -webkit-user-select: all;
+  }
+  .key-value button { flex-shrink: 0; }
+
+  .sites-list { display: grid; gap: 0.75rem; }
+  .site-card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 0.9rem;
+    min-width: 0;
+  }
+  .site-card.inactive { opacity: 0.55; }
+  .site-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  .site-head .domain {
+    font-weight: 600;
+    font-size: 0.95rem;
+    word-break: break-all;
+    min-width: 0;
+  }
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    flex-shrink: 0;
+  }
+  .badge.on { background: #dcfce7; color: #166534; }
+  .badge.off { background: #fee2e2; color: #991b1b; }
+  .site-meta { font-size: 0.75rem; color: var(--muted); margin-top: 0.5rem; }
+  .site-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+    transform: translateX(-50%) translateY(20px);
+    background: #0f172a;
+    color: #fff;
+    padding: 0.6rem 1rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    max-width: calc(100vw - 2rem);
+    z-index: 999;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    z-index: 1000;
+    overflow-y: auto;
+  }
+  .modal {
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.25rem;
+    max-width: 480px;
+    width: 100%;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15);
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+  }
+  .modal h3 { margin: 0 0 0.5rem; font-size: 1.05rem; }
+  .modal p { margin: 0 0 1rem; color: var(--muted); font-size: 0.9rem; }
+  .modal .actions { display: flex; gap: 0.5rem; justify-content: flex-end; flex-wrap: wrap; }
+  .modal .actions button { flex: 1; min-width: 100px; }
+  @media (min-width: 480px) { .modal .actions button { flex: 0 0 auto; } }
+
+  /* New-secret modal special styling */
+  .modal.warn-modal { border-top: 4px solid #d97706; }
+  .modal .warn-banner {
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    color: #92400e;
+    padding: 0.6rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    margin: 0.75rem 0 0.75rem;
+  }
+  .modal .warn-banner b { color: #78350f; }
+  .modal .new-secret {
+    background: #f1f5f9;
+    padding: 0.6rem 0.7rem;
+    border-radius: 8px;
+    font: 0.8rem/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    word-break: break-all;
+    user-select: all;
+    -webkit-user-select: all;
+    margin-bottom: 0.75rem;
+    border: 1px solid #cbd5e1;
+  }
+  .modal .new-secret.copied {
+    background: #dcfce7;
+    border-color: #86efac;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>irocap admin</h1>
+
+  <!-- ==================== LOGIN ==================== -->
+  <div id="login-view" class="card">
+    <h2 style="margin-top: 0">Sign in</h2>
+    <div class="stack">
+      <div>
+        <label class="field" for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" inputmode="email" />
+      </div>
+      <div>
+        <label class="field" for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" />
+      </div>
+      <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap">
+        <button id="login-btn" style="flex: 1; min-width: 120px">Sign in</button>
+        <span id="login-err" class="err"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== DASHBOARD ==================== -->
+  <div id="dash-view" class="hidden">
+
+    <div class="topbar">
+      <span class="who">Signed in as <b id="who"></b></span>
+      <button class="ghost" id="logout-btn">Sign out</button>
+    </div>
+
+    <h2>Overview</h2>
+    <div class="stats">
+      <div class="stat"><div class="n" id="s-sites">—</div><div class="l">Active sites</div></div>
+      <div class="stat"><div class="n" id="s-ch">—</div><div class="l">Challenges 24h</div></div>
+      <div class="stat"><div class="n" id="s-tk">—</div><div class="l">Tokens 24h</div></div>
+      <div class="stat"><div class="n" id="s-used">—</div><div class="l">Consumed 24h</div></div>
+    </div>
+
+    <h2>Register a site</h2>
+    <div class="card">
+      <div class="row3">
+        <div>
+          <label class="field" for="new-domain">Domain</label>
+          <input id="new-domain" type="text" placeholder="example.com" autocomplete="off" autocapitalize="off" spellcheck="false" />
+        </div>
+        <button id="register-btn">Register</button>
+        <button class="secondary" id="clear-btn">Clear</button>
+      </div>
+      <div id="register-result" class="hidden" style="margin-top: 1rem">
+        <div class="muted">Save both values now. Use the sitekey in your HTML; keep the secret on your server.</div>
+        <div class="key-row">
+          <div class="key-label">Sitekey (public)</div>
+          <div class="key-value">
+            <code id="out-sitekey"></code>
+            <button class="tiny secondary" data-copy="out-sitekey">Copy</button>
+          </div>
+        </div>
+        <div class="key-row">
+          <div class="key-label">Secret (server-only)</div>
+          <div class="key-value">
+            <code id="out-secret"></code>
+            <button class="tiny secondary" data-copy="out-secret">Copy</button>
+          </div>
+        </div>
+      </div>
+      <div id="register-err" class="err" style="margin-top: 0.5rem"></div>
+    </div>
+
+    <h2>Registered sites</h2>
+    <div id="sites-list" class="sites-list">
+      <div class="muted">Loading…</div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var STORAGE_KEY = 'irocap.admin.session';
+
+  function $(id) { return document.getElementById(id); }
+  function show(view) {
+    $('login-view').classList.toggle('hidden', view !== 'login');
+    $('dash-view').classList.toggle('hidden', view !== 'dash');
+  }
+  function setText(id, txt) { var e = $(id); if (e) e.textContent = txt; }
+
+  var toastTimer;
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 1800);
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+    });
+  }
+
+  function getToken() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}').token || null; }
+    catch (e) { return null; }
+  }
+  function getEmail() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}').email || null; }
+    catch (e) { return null; }
+  }
+  function saveSession(token, email) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ token: token, email: email }));
+  }
+  function clearSession() { localStorage.removeItem(STORAGE_KEY); }
+
+  async function api(path, opts) {
+    opts = opts || {};
+    var headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+    var t = getToken();
+    if (t) headers['Authorization'] = 'Bearer ' + t;
+
+    try {
+      var r = await fetch(path, {
+        method: opts.method || 'GET',
+        headers: headers,
+        body: opts.body ? JSON.stringify(opts.body) : undefined,
+        credentials: 'omit'
+      });
+      var body = await r.json().catch(function () { return {}; });
+      return { ok: r.ok, status: r.status, body: body };
+    } catch (e) {
+      return { ok: false, status: 0, body: { error: 'network' } };
+    }
+  }
+
+  async function copyText(text) {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch (e) { /* fall through */ }
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      return true;
+    } catch (e) { return false; }
+  }
+
+  // ---- confirm modal ----
+  function confirmModal(title, message, confirmLabel, danger) {
+    return new Promise(function (resolve) {
+      var backdrop = document.createElement('div');
+      backdrop.className = 'modal-backdrop';
+      backdrop.innerHTML =
+        '<div class="modal">' +
+        '  <h3>' + escapeHtml(title) + '</h3>' +
+        '  <p>' + escapeHtml(message) + '</p>' +
+        '  <div class="actions">' +
+        '    <button class="secondary" data-act="cancel">Cancel</button>' +
+        '    <button class="' + (danger ? 'danger' : '') + '" data-act="confirm">' + escapeHtml(confirmLabel) + '</button>' +
+        '  </div>' +
+        '</div>';
+      document.body.appendChild(backdrop);
+
+      function done(v) {
+        if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+        resolve(v);
+      }
+      backdrop.addEventListener('click', function (ev) {
+        if (ev.target === backdrop) return done(false);
+        var act = ev.target.getAttribute && ev.target.getAttribute('data-act');
+        if (act === 'cancel') return done(false);
+        if (act === 'confirm') return done(true);
+      });
+    });
+  }
+
+  // ---- new secret modal (mandatory acknowledgement) ----
+  function showNewSecretModal(domain, secret) {
+    return new Promise(function (resolve) {
+      var backdrop = document.createElement('div');
+      backdrop.className = 'modal-backdrop';
+      backdrop.innerHTML =
+        '<div class="modal warn-modal">' +
+        '  <h3>New secret for ' + escapeHtml(domain) + '</h3>' +
+        '  <div class="warn-banner">' +
+        '    <b>⚠ Save this now.</b> The previous secret stopped working the moment you clicked Regenerate. ' +
+        'You will not see this value again.' +
+        '  </div>' +
+        '  <div class="new-secret" id="modal-secret">' + escapeHtml(secret) + '</div>' +
+        '  <div class="actions">' +
+        '    <button class="secondary" id="modal-copy">Copy secret</button>' +
+        '    <button id="modal-done">I\'ve saved it</button>' +
+        '  </div>' +
+        '</div>';
+
+      // Backdrop cannot dismiss this modal — user must acknowledge.
+      document.body.appendChild(backdrop);
+
+      var copyBtn = backdrop.querySelector('#modal-copy');
+      var doneBtn = backdrop.querySelector('#modal-done');
+      var secretEl = backdrop.querySelector('#modal-secret');
+
+      copyBtn.addEventListener('click', async function () {
+        var ok = await copyText(secret);
+        if (ok) {
+          secretEl.classList.add('copied');
+          copyBtn.textContent = '✓ Copied';
+          setTimeout(function () {
+            secretEl.classList.remove('copied');
+            copyBtn.textContent = 'Copy secret';
+          }, 1800);
+        } else {
+          copyBtn.textContent = 'Copy failed';
+        }
+      });
+
+      doneBtn.addEventListener('click', function () {
+        if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+        resolve();
+      });
+    });
+  }
+
+  // ---- login ----
+  async function doLogin() {
+    var email = $('email').value.trim();
+    var password = $('password').value;
+    var err = $('login-err');
+    err.textContent = '';
+    if (!email || !password) { err.textContent = 'Email and password required'; return; }
+
+    $('login-btn').disabled = true;
+    try {
+      var r = await api('/api/login', { method: 'POST', body: { email: email, password: password } });
+      if (!r.ok) {
+        err.textContent = (r.body && r.body.error) || 'Login failed';
+        return;
+      }
+      saveSession(r.body.token, r.body.email);
+      await boot();
+    } finally {
+      $('login-btn').disabled = false;
+    }
+  }
+
+  function doLogout() {
+    clearSession();
+    $('password').value = '';
+    show('login');
+    toast('Signed out');
+  }
+
+  async function loadStats() {
+    var r = await api('/api/stats');
+    if (!r.ok) return;
+    setText('s-sites', String(r.body.active_sites ?? '—'));
+    setText('s-ch', String(r.body.challenges_24h ?? '—'));
+    setText('s-tk', String(r.body.tokens_24h ?? '—'));
+    setText('s-used', String(r.body.tokens_used_24h ?? '—'));
+  }
+
+  function siteCardHtml(site) {
+    var active = site.active;
+    var sitekey = String(site.sitekey || '');
+    return (
+      '<div class="site-card' + (active ? '' : ' inactive') + '" data-sitekey="' + escapeHtml(sitekey) + '">' +
+      '  <div class="site-head">' +
+      '    <div class="domain">' + escapeHtml(site.domain) + '</div>' +
+      '    <span class="badge ' + (active ? 'on' : 'off') + '">' + (active ? 'Active' : 'Inactive') + '</span>' +
+      '  </div>' +
+      '  <div class="key-row">' +
+      '    <div class="key-label">Sitekey</div>' +
+      '    <div class="key-value">' +
+      '      <code>' + escapeHtml(sitekey) + '</code>' +
+      '      <button class="tiny secondary" data-act="copy-sitekey">Copy</button>' +
+      '    </div>' +
+      '  </div>' +
+      '  <div class="key-row">' +
+      '    <div class="key-label">Secret</div>' +
+      '    <div class="key-value">' +
+      '      <code style="color:#94a3b8">••••••••••••••••••••••••••••••••</code>' +
+      '    </div>' +
+      '    <div class="muted" style="margin-top:0.3rem">Secret is write-only. Rotate it to get a new one.</div>' +
+      '  </div>' +
+      '  <div class="site-meta">Created ' + escapeHtml(new Date(site.created_at).toLocaleString()) + '</div>' +
+      '  <div class="site-actions">' +
+      '    <button class="ghost tiny warn" data-act="rotate">Regenerate secret</button>' +
+      '    <button class="ghost tiny" data-act="toggle">' + (active ? 'Deactivate' : 'Activate') + '</button>' +
+      '    <button class="ghost tiny danger" data-act="delete">Delete</button>' +
+      '  </div>' +
+      '</div>'
+    );
+  }
+
+  async function loadSites() {
+    var list = $('sites-list');
+    list.innerHTML = '<div class="muted">Loading…</div>';
+    var r = await api('/api/sites');
+    if (!r.ok) {
+      list.innerHTML = '<div class="err">Failed to load sites</div>';
+      return;
+    }
+    var sites = r.body.sites || [];
+    if (sites.length === 0) {
+      list.innerHTML = '<div class="muted">No sites registered yet</div>';
+      return;
+    }
+    list.innerHTML = sites.map(siteCardHtml).join('');
+  }
+
+  async function rotateSecret(card) {
+    var sitekey = card.getAttribute('data-sitekey');
+    var domain = card.querySelector('.domain') ? card.querySelector('.domain').textContent : 'this site';
+    if (!sitekey) return;
+
+    var ok = await confirmModal(
+      'Regenerate secret?',
+      'A new secret will be created for ' + domain + '. The previous secret will stop working immediately, breaking any server-side verification that still uses it. You must update your server config right after.',
+      'Regenerate',
+      false
+    );
+    if (!ok) return;
+
+    var r = await api('/api/site-manage', { method: 'POST', body: { action: 'rotate', sitekey: sitekey } });
+    if (!r.ok || !r.body.secret) {
+      toast('Rotate failed');
+      return;
+    }
+
+    await showNewSecretModal(r.body.domain || domain, r.body.secret);
+    toast('Secret rotated');
+  }
+
+  async function toggleSite(card) {
+    var sitekey = card.getAttribute('data-sitekey');
+    if (!sitekey) return;
+    var r = await api('/api/site-manage', { method: 'POST', body: { action: 'toggle', sitekey: sitekey } });
+    if (!r.ok) { toast('Toggle failed'); return; }
+    toast(r.body.active ? 'Site activated' : 'Site deactivated');
+    await Promise.all([loadSites(), loadStats()]);
+  }
+
+  async function deleteSite(card) {
+    var sitekey = card.getAttribute('data-sitekey');
+    var domain = card.querySelector('.domain') ? card.querySelector('.domain').textContent : 'this site';
+    if (!sitekey) return;
+
+    var ok = await confirmModal(
+      'Delete site?',
+      'This will permanently remove ' + domain + '. Its secret will stop working immediately. This cannot be undone.',
+      'Delete',
+      true
+    );
+    if (!ok) return;
+
+    var r = await api('/api/site-manage', { method: 'POST', body: { action: 'delete', sitekey: sitekey } });
+    if (!r.ok) { toast('Delete failed'); return; }
+    toast('Site deleted');
+    await Promise.all([loadSites(), loadStats()]);
+  }
+
+  async function doRegister() {
+    var domain = $('new-domain').value.trim();
+    var err = $('register-err');
+    var res = $('register-result');
+    err.textContent = '';
+    res.classList.add('hidden');
+    if (!domain) { err.textContent = 'Domain required'; return; }
+
+    $('register-btn').disabled = true;
+    try {
+      var r = await api('/api/register', { method: 'POST', body: { domain: domain } });
+      if (!r.ok) {
+        err.textContent = (r.body && r.body.error) || 'Registration failed';
+        return;
+      }
+      setText('out-sitekey', r.body.sitekey);
+      setText('out-secret', r.body.secret);
+      res.classList.remove('hidden');
+      $('new-domain').value = '';
+      await Promise.all([loadSites(), loadStats()]);
+      toast('Site registered');
+    } finally {
+      $('register-btn').disabled = false;
+    }
+  }
+
+  // ---- event delegation ----
+  document.addEventListener('click', function (ev) {
+    var t = ev.target;
+    if (!t || !t.getAttribute) return;
+
+    var copyId = t.getAttribute('data-copy');
+    if (copyId) {
+      var el = document.getElementById(copyId);
+      if (el) copyText(el.textContent || '').then(function (ok) { toast(ok ? 'Copied' : 'Copy failed'); });
+      return;
+    }
+
+    var card = t.closest ? t.closest('.site-card') : null;
+    if (!card) return;
+
+    var act = t.getAttribute('data-act');
+    if (!act) return;
+
+    if (act === 'copy-sitekey') {
+      var sk = card.getAttribute('data-sitekey') || '';
+      copyText(sk).then(function (ok) { toast(ok ? 'Copied' : 'Copy failed'); });
+    } else if (act === 'rotate') {
+      rotateSecret(card);
+    } else if (act === 'toggle') {
+      toggleSite(card);
+    } else if (act === 'delete') {
+      deleteSite(card);
+    }
+  });
+
+  async function boot() {
+    if (!getToken()) { show('login'); return; }
+    setText('who', getEmail() || '');
+    show('dash');
+    await Promise.all([loadStats(), loadSites()]);
+  }
+
+  $('login-btn').addEventListener('click', doLogin);
+  $('password').addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
+  $('logout-btn').addEventListener('click', doLogout);
+  $('register-btn').addEventListener('click', doRegister);
+  $('new-domain').addEventListener('keydown', function (e) { if (e.key === 'Enter') doRegister(); });
+  $('clear-btn').addEventListener('click', function () {
+    $('new-domain').value = '';
+    $('register-result').classList.add('hidden');
+    $('register-err').textContent = '';
+  });
+
+  boot();
+})();
+</script>
+</body>
+</html>

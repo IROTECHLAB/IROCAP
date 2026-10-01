@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>irocap demo</title>
+<style>
+  :root { color-scheme: light; }
+  body {
+    font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    max-width: 480px; margin: 4rem auto; padding: 0 1rem; color: #0f172a;
+  }
+  h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+  p.sub { color: #64748b; margin-top: 0; }
+  form { display: grid; gap: 0.75rem; margin-top: 1.5rem; }
+  label { font-size: 0.85rem; color: #334155; }
+  input[type=email], input[type=text] {
+    padding: 0.5rem 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px;
+    font: inherit;
+  }
+  button {
+    padding: 0.6rem 0.9rem; border: 0; border-radius: 6px;
+    background: #0f172a; color: #fff; font: inherit; cursor: pointer;
+  }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  pre { background: #f1f5f9; padding: 0.75rem; border-radius: 6px; font-size: 0.8rem; overflow: auto; }
+</style>
+</head>
+<body>
+  <h1>irocap demo</h1>
+  <p class="sub">A frictionless Proof-of-Work CAPTCHA. No clicks required.</p>
+
+  <form id="demo-form">
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" required placeholder="you@example.com" />
+
+    <div class="irocap"></div>
+
+    <button type="submit" id="submit-btn" disabled>Submit</button>
+  </form>
+
+  <pre id="log">waiting for token…</pre>
+
+<script src="/irocap.js"></script>
+<script>
+  (function () {
+    var log = document.getElementById('log');
+    var btn = document.getElementById('submit-btn');
+
+    var widget = new Irocap('d83591de15e4596447a028b7a3a6a136', {
+      container: '.irocap',
+      callback: function (token, score) {
+        log.textContent = 'token: ' + token.slice(0, 32) + '…\nscore: ' + score;
+        btn.disabled = false;
+      },
+      'error-callback': function (err) {
+        log.textContent = 'error: ' + JSON.stringify(err);
+        btn.disabled = true;
+      }
+    });
+
+    document.getElementById('demo-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var token = document.querySelector('input[name="irocap-token"]');
+      alert('Form would submit with token: ' + (token ? token.value.slice(0, 24) + '…' : '(none)'));
+    });
+  })();
+</script>
+</body>
+</html>

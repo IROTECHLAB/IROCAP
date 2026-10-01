@@ -1,0 +1,34 @@
+{
+  "name": "irocap",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Privacy-first, frictionless Proof-of-Work CAPTCHA for Vercel + Neon",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "migrate": "tsx scripts/migrate.ts",
+    "register-site": "tsx scripts/register-site.ts",
+    "e2e": "tsx scripts/e2e.ts",
+    "dev": "vercel dev",
+    "deploy": "vercel --prod",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.9.4",
+    "hash-wasm": "^4.11.0",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "^20.14.0",
+    "@vercel/node": "^3.2.0",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": []
+  }
+}
