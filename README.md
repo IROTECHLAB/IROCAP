@@ -81,7 +81,7 @@ traffic is scored and challenged harder.
 
 ### 1. Clone the repository
 
-<pre><code>git clone https://github.com/your-username/irocap.git
+<pre><code>git clone https://github.com/IROTECHLAB/irocap.git
 cd irocap</code></pre>
 
 ### 2. Set up the database
@@ -454,4 +454,4 @@ For many sites, that covers the practical threat model.
 
 ## License
 
-MIT
+[MIT](LICENSE)
