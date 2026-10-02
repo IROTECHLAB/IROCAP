@@ -32,7 +32,7 @@ Thanks for considering a contribution. This is a small project with a focused sc
 
 ### Local setup
 
-<pre><code>git clone https://github.com/your-username/irocap.git
+<pre><code>git clone https://github.com/IROTECHLAB/irocap.git
 cd irocap
 npm install
 cp .env.example .env</code></pre>
@@ -218,4 +218,4 @@ If the bug involves the widget, include the DevTools console output and the fail
 
 ## License
 
-By contributing, you agree your contributions are licensed under the MIT license.
+By contributing, you agree your contributions are licensed under the [MIT](LICENSE) license.
