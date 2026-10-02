@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getSql } from '../lib/db.js';
 import { verifyToken } from '../lib/tokens.js';
+import { setCorsHeaders, handlePreflight } from '../lib/cors.js';
 
 interface SiteVerifyBody {
   secret?: string;
@@ -21,6 +22,9 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {
+  setCorsHeaders(req, res);
+  if (handlePreflight(req, res)) return;
+
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Content-Type', 'application/json');
 

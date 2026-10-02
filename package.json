@@ -5,13 +5,19 @@
   "type": "module",
   "description": "Privacy-first, frictionless Proof-of-Work CAPTCHA for Vercel + Neon",
   "license": "MIT",
+  "author": "Bajrang Goswami (https://t.me/ironmanhindigaming)",
+  "homepage": "https://github.com/IROTECHLAB/irocap#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/IROTECHLAB/irocap.git"
+  },
+  "bugs": {
+    "url": "https://github.com/IROTECHLAB/irocap/issues"
+  },
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "migrate": "tsx scripts/migrate.ts",
-    "register-site": "tsx scripts/register-site.ts",
-    "e2e": "tsx scripts/e2e.ts",
     "dev": "vercel dev",
     "deploy": "vercel --prod",
     "typecheck": "tsc --noEmit"
@@ -27,8 +33,5 @@
     "@vercel/node": "^3.2.0",
     "tsx": "^4.16.0",
     "typescript": "^5.5.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": []
   }
 }

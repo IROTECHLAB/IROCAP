@@ -5,6 +5,11 @@ import { scoreSignals, type IrocapSignals } from '../lib/scoring.js';
 import { maybeCleanup } from '../lib/cleanup.js';
 import { validateChallengeSignature } from '../lib/challenge-sign.js';
 import { extractTrustedSignals, scoreTrustedSignals } from '../lib/trusted.js';
+import { checkConsistency } from '../lib/consistency.js';
+import { fingerprint } from '../lib/fingerprint.js';
+import { analyzeBehavior } from '../lib/behavioral.js';
+import { getASN, isDatacenterASN } from '../lib/asn.js';
+import { setCorsHeaders, handlePreflight } from '../lib/cors.js';
 
 interface VerifyBody {
   challenge?: string;
@@ -61,6 +66,9 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {
+  setCorsHeaders(req, res);
+  if (handlePreflight(req, res)) return;
+
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Content-Type', 'application/json');
 
@@ -170,9 +178,99 @@ export default async function handler(
     const signals = normalizeSignals(body?.signals);
     const behavioral = scoreSignals(signals);
 
-    // Trusted signals weigh more; use the minimum so a spoofed behavioral
-    // score can't raise a bad trusted score.
-    const finalScore = Math.min(verdict.score, behavioral);
+    const consistency = checkConsistency(req, {
+      language: signals.language,
+      timezone: signals.timezone,
+      screenSize: signals.screenSize,
+      colorDepth: signals.colorDepth,
+    });
+
+    const challengeAgeMs = Date.now() - new Date(row.created_at).getTime();
+    const behavior = analyzeBehavior(signals.events, challengeAgeMs);
+
+    if (consistency.reasons.length > 0) {
+      console.warn('[irocap] consistency flags', { sitekey: row.sitekey, reasons: consistency.reasons });
+    }
+    if (behavior.reasons.length > 0) {
+      console.warn('[irocap] behavior flags', { sitekey: row.sitekey, reasons: behavior.reasons });
+    }
+
+    let finalScore = Math.min(
+      verdict.score,
+      consistency.score,
+      behavior.score,
+      behavioral,
+    );
+
+    // ASN blocking
+    const ip = clientIp(req);
+    try {
+      const asnInfo = await getASN(ip);
+      if (isDatacenterASN(asnInfo.asn)) {
+        finalScore = Math.min(finalScore, 0.15);
+        console.warn('[irocap] datacenter asn', {
+          sitekey: row.sitekey, ip, asn: asnInfo.asn, org: asnInfo.org,
+        });
+      }
+    } catch { /* non-fatal */ }
+
+    // Fingerprint reputation
+    const fp = fingerprint(signals);
+    const isGoodFp = finalScore >= 0.5;
+    let fpReputation = 0.5;
+    try {
+      const fpRows = await sql`
+        INSERT INTO fingerprints (fp, total_hits, good_hits, bad_hits, reputation)
+        VALUES (
+          ${fp}, 1,
+          ${isGoodFp ? 1 : 0},
+          ${isGoodFp ? 0 : 1},
+          ${finalScore}
+        )
+        ON CONFLICT (fp) DO UPDATE SET
+          last_seen = NOW(),
+          total_hits = fingerprints.total_hits + 1,
+          good_hits = fingerprints.good_hits + ${isGoodFp ? 1 : 0},
+          bad_hits = fingerprints.bad_hits + ${isGoodFp ? 0 : 1},
+          reputation = (
+            (fingerprints.good_hits + ${isGoodFp ? 1 : 0})::float /
+            GREATEST(fingerprints.total_hits + 1, 1)
+          )
+        RETURNING reputation
+      ` as unknown as Array<{ reputation: number }>;
+      fpReputation = fpRows[0]?.reputation ?? 0.5;
+    } catch (e) {
+      console.warn('[irocap] fingerprint upsert failed', e);
+    }
+
+    if (fpReputation < 0.3) {
+      finalScore = Math.min(finalScore, fpReputation);
+    }
+
+    // IP reputation
+    const isGoodIp = finalScore >= 0.5;
+    try {
+      await sql`
+        INSERT INTO ip_reputation (ip, total_solves, good_solves, bad_solves, reputation)
+        VALUES (
+          ${ip}::inet, 1,
+          ${isGoodIp ? 1 : 0},
+          ${isGoodIp ? 0 : 1},
+          ${finalScore}
+        )
+        ON CONFLICT (ip) DO UPDATE SET
+          last_seen = NOW(),
+          total_solves = ip_reputation.total_solves + 1,
+          good_solves = ip_reputation.good_solves + ${isGoodIp ? 1 : 0},
+          bad_solves = ip_reputation.bad_solves + ${isGoodIp ? 0 : 1},
+          reputation = (
+            (ip_reputation.good_solves + ${isGoodIp ? 1 : 0})::float /
+            GREATEST(ip_reputation.total_solves + 1, 1)
+          )
+      `;
+    } catch (e) {
+      console.warn('[irocap] ip reputation upsert failed', e);
+    }
 
     // --- 8. Issue JWT, store token. --------------------------------------
     const token = signToken({
@@ -180,8 +278,6 @@ export default async function handler(
       score: finalScore,
       challenge,
     });
-
-    const ip = clientIp(req);
 
     await sql`
       INSERT INTO irocap_tokens (token, sitekey, score, ip, used)

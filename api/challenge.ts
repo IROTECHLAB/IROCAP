@@ -4,6 +4,7 @@ import { getSql } from '../lib/db.js';
 import { checkRateLimit } from '../lib/rate-limit.js';
 import { maybeCleanup } from '../lib/cleanup.js';
 import { signChallenge } from '../lib/challenge-sign.js';
+import { setCorsHeaders, handlePreflight } from '../lib/cors.js';
 
 const BASE_DIFFICULTY = 5;
 
@@ -24,6 +25,9 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {
+  setCorsHeaders(req, res);
+  if (handlePreflight(req, res)) return;
+
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Content-Type', 'application/json');
 
