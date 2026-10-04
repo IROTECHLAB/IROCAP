@@ -410,6 +410,49 @@
     }
   };
 
+  Irocap.prototype._collectEnvSignals = function () {
+    var out = {
+      hasChrome: typeof window.chrome === 'object',
+      hasChromeRuntime: typeof window.chrome === 'object' && typeof window.chrome.runtime === 'object',
+      hasChromeApp: typeof window.chrome === 'object' && typeof window.chrome.app === 'object',
+      hasChromeCsi: typeof window.chrome === 'object' && typeof window.chrome.csi === 'function',
+      hasChromeLoadTimes: typeof window.chrome === 'object' && typeof window.chrome.loadTimes === 'function',
+      pluginCount: navigator.plugins ? navigator.plugins.length : 0,
+      mimeTypeCount: navigator.mimeTypes ? navigator.mimeTypes.length : 0,
+      uaBrandCount: (navigator.userAgentData && navigator.userAgentData.brands) ? navigator.userAgentData.brands.length : 0,
+      hasPermissionsApi: typeof navigator.permissions === 'object',
+      notificationPermission: (typeof Notification !== 'undefined') ? Notification.permission : 'missing',
+      outerW: window.outerWidth || 0,
+      outerH: window.outerHeight || 0,
+      innerW: window.innerWidth || 0,
+      innerH: window.innerHeight || 0,
+      screenW: window.screen ? window.screen.width : 0,
+      screenH: window.screen ? window.screen.height : 0,
+      availW: window.screen ? window.screen.availWidth : 0,
+      availH: window.screen ? window.screen.availHeight : 0,
+      prefersDark: window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)').matches : null,
+      prefersReducedMotion: window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : null,
+      hasTouch: 'ontouchstart' in window,
+      hasPointer: 'PointerEvent' in window,
+      hasWebdriver: navigator.webdriver === true,
+      hasLocks: typeof navigator.locks === 'object',
+      hasStorage: typeof navigator.storage === 'object',
+      hasConnection: typeof navigator.connection === 'object',
+      hardwareConcurrency: navigator.hardwareConcurrency || 0,
+      deviceMemory: navigator.deviceMemory || 0,
+      languageCount: navigator.languages ? navigator.languages.length : 0
+    };
+    try {
+      var gl = document.createElement('canvas').getContext('webgl');
+      var dbg = gl && gl.getExtension('WEBGL_debug_renderer_info');
+      if (gl && dbg) {
+        out.glVendor = gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) || '';
+        out.glRenderer = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || '';
+      }
+    } catch (e) { /* ignore */ }
+    return out;
+  };
+
   Irocap.prototype._submit = async function (ctx, solution) {
     var signals = Object.assign({}, this.signals);
     signals.solveMs = solution.solveMs;
@@ -417,6 +460,8 @@
       ? this._firstInteraction - this._startTime
       : Date.now() - this._startTime;
     signals.events = (this._events && this._events.length) ? this._events.slice(0, 500) : [];
+
+    signals.env = this._collectEnvSignals();
 
     var res = await fetch(this.base + '/api/verify', {
       method: 'POST',

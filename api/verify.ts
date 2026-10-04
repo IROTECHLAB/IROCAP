@@ -9,6 +9,7 @@ import { checkConsistency } from '../lib/consistency.js';
 import { fingerprint } from '../lib/fingerprint.js';
 import { analyzeBehavior } from '../lib/behavioral.js';
 import { getASN, isDatacenterASN } from '../lib/asn.js';
+import { scoreEnvSignals, type EnvSignals } from '../lib/env-signals.js';
 import { setCorsHeaders, handlePreflight } from '../lib/cors.js';
 
 interface VerifyBody {
@@ -195,10 +196,20 @@ export default async function handler(
       console.warn('[irocap] behavior flags', { sitekey: row.sitekey, reasons: behavior.reasons });
     }
 
+    const envVerdict = scoreEnvSignals(signals.env as EnvSignals | undefined);
+    if (envVerdict.reasons.length > 0) {
+      console.warn('[irocap] env flags', {
+        sitekey: row.sitekey,
+        reasons: envVerdict.reasons,
+        headlessMarkers: envVerdict.headlessMarkerCount,
+      });
+    }
+
     let finalScore = Math.min(
       verdict.score,
       consistency.score,
       behavior.score,
+      envVerdict.score,
       behavioral,
     );
 

@@ -21,6 +21,7 @@ export interface IrocapSignals {
   method: 'wasm' | 'js' | 'webcrypto';
   solveMs: number;
   pluginsCount?: number;
+  env?: Record<string, unknown>;
 }
 
 const CANVAS_BLOCKLIST = new Set<string>([
