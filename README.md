@@ -26,6 +26,7 @@ traffic is scored and challenged harder.
 - [Configuration reference](#configuration-reference)
 - [Architecture](#architecture)
 - [Performance](#performance)
+- [About the score](#about-the-score)
 - [Security notes](#security-notes)
 - [Limitations](#limitations)
 - [License](#license)
@@ -457,6 +458,96 @@ const BASE_DIFFICULTY = 5;   // change to 4 for faster solves
 
 Each step down halves the average solve time and halves the average bot
 cost. There is no free lunch.
+
+---
+
+## About the score
+
+The widget shows a score from 0.0 to 1.0 on every solve. Higher is better.
+A score of 1.0 means every check passed cleanly. Lower scores mean one or
+more signals contributed a penalty.
+
+If you reproduce the demo on a slow device, you may see scores like 0.6 or
+0.7 even though the solve succeeded and the token was issued. **That is not
+a bug.** It means one of the scoring rules fired based on something the
+server or the widget observed. The token is still valid, and your backend
+should still accept it if the score is above your threshold (default 0.5).
+
+### Why 0.6 is common on budget Android
+
+One rule in `lib/scoring.ts` penalizes solves that take too long in the
+WASM path:
+
+```javascript
+if (signals.method === 'wasm' && signals.solveMs > 30000) score -= 0.4;
+```
+
+On a modern desktop, WASM at difficulty 5 solves in a few hundred
+milliseconds. On a 2020+ Android device, roughly 500 ms to 3 seconds. On
+older budget Android hardware (a Redmi Note 4, for example), it can take
+30–40 seconds. When a solve takes over 30 seconds, the rule assumes WASM
+should have been faster and applies a −0.4 penalty. The final score
+becomes 0.6.
+
+This is intentional: the rule exists to catch bots that claim to be using
+WASM but are somehow running much slower than a real browser would. It
+sometimes fires on legitimately slow devices, at the cost of a lower score.
+
+### What to do about it
+
+You have three options:
+
+**1. Accept it.** If your score threshold is 0.5 (the default), 0.6 passes
+and the solve is accepted. The visitor sees no difference.
+
+**2. Raise the threshold in `lib/scoring.ts`** to be more tolerant of slow
+devices. For example, change 30 seconds to 120 seconds:
+
+```javascript
+if (signals.method === 'wasm' && signals.solveMs > 120000) score -= 0.4;
+```
+
+This accepts slow budget devices without penalizing them, while still
+catching the truly impossibly-slow case.
+
+**3. Lower the challenge difficulty** in `api/challenge.ts`:
+
+```javascript
+const BASE_DIFFICULTY = 5;   // change to 4 for ~2x faster solves
+```
+
+Each step down halves the average solve time and halves the average bot
+cost. There is no free lunch.
+
+### Other scores you might see
+
+| Score | Typical cause |
+| --- | --- |
+| 1.0 | All checks passed |
+| 0.9 | One soft penalty (e.g. an informational signal) |
+| 0.6 | WASM timeout rule fired, or two soft penalties |
+| 0.2 | ASN blocking fired (datacenter IP), or 2+ headless markers detected |
+| 0.0 | `navigator.webdriver === true`, canvas blocklist hit, or a hard bot-detection rule |
+
+Every penalty has a name in the server logs. To see exactly why a specific
+solve got a specific score, tail the deployment logs:
+
+```bash
+vercel logs https://your-deployment.vercel.app --follow
+```
+
+Then trigger a solve. Every rule that fires prints a line beginning with
+`[irocap]`, followed by the reason and the sitekey:
+
+```text
+[irocap] env flags { sitekey: 'd835...', reasons: [ 'no-permissions-api' ] }
+[irocap] consistency flags { sitekey: 'd835...', reasons: [ 'chrome-no-sec-ch-ua' ] }
+[irocap] datacenter asn { sitekey: 'd835...', ip: '...', asn: 14618, org: 'Amazon' }
+[irocap] bot rejected { sitekey: 'd835...', reasons: [ 'raw-http-client-ua' ] }
+```
+
+Each line maps directly to a rule in one of the `lib/*.ts` scoring
+modules. Search for the reason string and you'll find the rule.
 
 ---
 
