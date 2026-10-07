@@ -48,10 +48,19 @@ export default async function handler(
       return;
     }
 
-    // Throttle brute-force attempts: 10 logins/min per IP per sitekey slot.
+    // Throttle brute-force attempts on two axes: IP-based and email-based.
+    // IP-based catches single-source attacks; email-based catches distributed
+    // attacks that rotate IPs but target the same account.
     const ip = clientIp(req);
-    const rl = await checkRateLimit(ip, 'admin-login', 10);
-    if (!rl.allowed) {
+    const ipRl = await checkRateLimit(ip, 'admin-login', 10);
+    if (!ipRl.allowed) {
+      res.status(429).json({ error: 'rate-limited', retry_after: 60 });
+      return;
+    }
+
+    const emailKey = 'admin-login:email:' + email;
+    const emailRl = await checkRateLimit('0.0.0.0', emailKey, 5);
+    if (!emailRl.allowed) {
       res.status(429).json({ error: 'rate-limited', retry_after: 60 });
       return;
     }

@@ -161,7 +161,7 @@
       'var hasher = null;',
       'var method = "js";',
       'try {',
-      '  importScripts("/wasm/sha256.umd.min.js");',
+      '  importScripts(wasmUrl);',
       '  if (self.hashwasm && self.hashwasm.createSHA256) {',
       '    method = "wasm";',
       '  }',
@@ -224,6 +224,7 @@
       '    var d = e.data || {};',
       '    var challenge = d.challenge;',
       '    var difficulty = d.difficulty;',
+      '    var wasmUrl = d.wasmUrl || "/wasm/sha256.umd.min.js";',
       '    var prefix = "";',
       '    for (var i = 0; i < difficulty; i++) prefix += "0";',
       '    if (self.hashwasm && self.hashwasm.createSHA256) {',
@@ -358,7 +359,11 @@
         done = true; clearTimeout(timeout); cleanup();
         reject(new Error((ev && ev.message) || 'worker-onerror'));
       };
-      worker.postMessage({ challenge: challenge, difficulty: difficulty });
+      worker.postMessage({
+        challenge: challenge,
+        difficulty: difficulty,
+        wasmUrl: self.base + '/wasm/sha256.umd.min.js',
+      });
     });
   };
 

@@ -21,6 +21,7 @@ export interface IrocapSignals {
   method: 'wasm' | 'js' | 'webcrypto';
   solveMs: number;
   pluginsCount?: number;
+  events?: Array<{ t: number; x?: number; y?: number; k?: string; s?: number }>;
   env?: Record<string, unknown>;
 }
 

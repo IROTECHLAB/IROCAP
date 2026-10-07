@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { getSql } from '../lib/db.js';
 import { signToken } from '../lib/tokens.js';
 import { scoreSignals, type IrocapSignals } from '../lib/scoring.js';
@@ -34,12 +35,33 @@ interface SiteRow {
   sitekey: string;
   domain: string;
   active: boolean;
+  secret: string;
+}
+
+const MIN_ACCEPT_SCORE = 0.3;
+
+function sha256Hex(value: string): string {
+  return createHash('sha256').update(value, 'utf8').digest('hex');
 }
 
 function clientIp(req: VercelRequest): string {
+  // On Vercel the edge sets x-real-ip to the actual client IP.
+  // x-forwarded-for is appended to, so the LAST entry is closest to us —
+  // never trust the first (client-claimable) entry.
+  const real = req.headers['x-real-ip'];
+  const realStr = Array.isArray(real) ? real[0] : real;
+  if (typeof realStr === 'string' && realStr.trim()) {
+    return realStr.trim();
+  }
+
   const fwd = req.headers['x-forwarded-for'];
-  if (typeof fwd === 'string' && fwd.length > 0) return fwd.split(',')[0]!.trim();
-  if (Array.isArray(fwd) && fwd.length > 0) return fwd[0]!.split(',')[0]!.trim();
+  const fwdStr = Array.isArray(fwd) ? fwd[0] : fwd;
+  if (typeof fwdStr === 'string' && fwdStr.length > 0) {
+    const parts = fwdStr.split(',').map((p) => p.trim()).filter(Boolean);
+    const last = parts[parts.length - 1];
+    if (last) return last;
+  }
+
   return req.socket?.remoteAddress ?? '0.0.0.0';
 }
 
@@ -130,7 +152,7 @@ export default async function handler(
 
     // --- 3. Fetch the site's domain for Origin/Referer matching. -----------
     const siteRows = (await sql`
-      SELECT sitekey, domain, active FROM sites WHERE sitekey = ${row.sitekey} LIMIT 1
+      SELECT sitekey, domain, active, secret FROM sites WHERE sitekey = ${row.sitekey} LIMIT 1
     `) as unknown as SiteRow[];
     const site = siteRows[0];
     if (!site || !site.active) {
@@ -152,9 +174,35 @@ export default async function handler(
       return;
     }
 
-    // --- 5. Verify the PoW hash. ------------------------------------------
-    const expectedPrefix = '0'.repeat(row.difficulty);
-    if (!hash.startsWith(expectedPrefix)) {
+    // --- 5. Verify the PoW hash by recomputing it. ------------------------
+    // This is the critical security check. We must not trust the client's
+    // claimed hash — we recompute SHA256(challenge + nonce) ourselves and
+    // compare it with timingSafeEqual.
+    if (
+      !/^[0-9a-f]{48}$/.test(challenge) ||
+      !/^[0-9a-f]{64}$/.test(hash) ||
+      typeof nonce !== 'number' ||
+      !Number.isSafeInteger(nonce) ||
+      nonce < 0
+    ) {
+      res.status(400).json({ error: 'invalid-solution' });
+      return;
+    }
+
+    const expectedHash = sha256Hex(challenge + nonce);
+
+    const suppliedBuf = Buffer.from(hash, 'ascii');
+    const expectedBuf = Buffer.from(expectedHash, 'ascii');
+
+    if (
+      suppliedBuf.length !== expectedBuf.length ||
+      !timingSafeEqual(suppliedBuf, expectedBuf)
+    ) {
+      res.status(400).json({ error: 'invalid-solution' });
+      return;
+    }
+
+    if (!expectedHash.startsWith('0'.repeat(row.difficulty))) {
       res.status(400).json({ error: 'invalid-solution' });
       return;
     }
@@ -226,7 +274,7 @@ export default async function handler(
     } catch { /* non-fatal */ }
 
     // Fingerprint reputation
-    const fp = fingerprint(signals);
+    const fp = fingerprint(signals, site.secret);
     const isGoodFp = finalScore >= 0.5;
     let fpReputation = 0.5;
     try {

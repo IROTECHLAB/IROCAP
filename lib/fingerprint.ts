@@ -1,7 +1,17 @@
-import { createHash } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 import type { IrocapSignals } from './scoring.js';
 
-export function fingerprint(signals: IrocapSignals): string {
+/**
+ * Per-sitekey fingerprint.
+ *
+ * The HMAC key is derived from the site's secret so the same browser
+ * produces different fingerprints for different sitekeys. This keeps
+ * reputation per-tenant and prevents cross-site tracking.
+ *
+ * The output is truncated to 16 hex chars (64 bits) — enough for
+ * collision resistance at our scale, and cheap to store.
+ */
+export function fingerprint(signals: IrocapSignals, siteSecret: string): string {
   const tuple = [
     signals.canvasHash || '',
     signals.webglVendor || '',
@@ -12,5 +22,5 @@ export function fingerprint(signals: IrocapSignals): string {
     String(signals.hardwareConcurrency || 0),
     String(signals.pluginsCount ?? -1),
   ].join('|');
-  return createHash('sha256').update(tuple).digest('hex').slice(0, 16);
+  return createHmac('sha256', siteSecret).update(tuple).digest('hex').slice(0, 16);
 }

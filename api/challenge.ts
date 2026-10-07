@@ -60,6 +60,9 @@ export default async function handler(
       return;
     }
 
+    // Tighten CORS for the POST response to the site's registered domain.
+    setCorsHeaders(req, res, site.domain);
+
     const ip = clientIp(req);
 
     const rl = await checkRateLimit(ip, sitekey, 60);
